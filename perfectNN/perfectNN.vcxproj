@@ -158,6 +158,8 @@
     <ClCompile Include="Source.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="act_fun.hpp" />
+    <ClInclude Include="Dense.hpp" />
     <ClInclude Include="NeuralN.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

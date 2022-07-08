@@ -1,6 +1,8 @@
 #pragma once
 #include <armadillo>
 
+enum class activation_type { SIGMOID, RELU, SOFTMAX, TAHN };
+
 class act_fun final {
 	using mat = arma::mat;
 private:

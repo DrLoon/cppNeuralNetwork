@@ -6,8 +6,6 @@ class NeuralN;
 #include <armadillo>
 #include "act_fun.hpp"
 
-enum class activation_type { SIGMOID, RELU, SOFTMAX, TAHN };
-
 class NeuralN {
 	using mat = arma::mat;
 	template<typename T> using vector = std::vector<T>;
