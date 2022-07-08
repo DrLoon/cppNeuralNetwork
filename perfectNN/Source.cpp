@@ -2,10 +2,10 @@
 
 #include <chrono>
 
-
+using enum activation_type;
 
 int main() {
-	const NeuralN MyNet_static( { 10, 25, 10, 5, 3 }, { NeuralN::SIGMOID, NeuralN::SIGMOID, NeuralN::SIGMOID, NeuralN::SIGMOID } );
+	const NeuralN MyNet_static( { 10, 25, 10, 5, 3 }, { SIGMOID, SIGMOID, SIGMOID, SIGMOID } );
 	std::vector<double> a;
 	std::vector<double> r = { 1,1,0.1,0.2,0.3,-0.6,-0.7,1,0.534,0.123 };
 	double s = 0;

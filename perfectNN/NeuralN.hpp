@@ -4,44 +4,15 @@
 
 class NeuralN;
 #include <armadillo>
+#include "act_fun.hpp"
 
-namespace {
-
-	using mat = arma::mat;
-
-	void relu(mat& input) {
-		for (auto& i : input) {
-			i = std::max(0.0, i);
-		}
-	}
-	void sigmoid(mat& input) {
-		for (auto& i : input) {
-			i = 1.0 / (exp(-i) + 1.0);
-		}
-	}
-	void tahn(mat& input) {
-		for (auto& i : input) {
-			i = 2.0 / (1 + exp(-2.0 * i)) - 1.0;
-		}
-	}
-	void softmax(mat& input) {
-		double s = 0;
-		double M = input.max();
-		for (auto& i : input) {
-			i -= M;
-			s += exp(i);
-		}
-		for (auto& i : input) {
-			i = exp(i) / s;
-		}
-	}
-}
+enum class activation_type { SIGMOID, RELU, SOFTMAX, TAHN };
 
 class NeuralN {
 	using mat = arma::mat;
 	template<typename T> using vector = std::vector<T>;
+	using enum activation_type;
 public:
-	enum activation_type { SIGMOID, RELU, SOFTMAX, TAHN };
 
 	NeuralN(std::initializer_list<int> _layers_size, std::initializer_list<activation_type> _layers_activation)
 		: layers_size(_layers_size),
@@ -71,18 +42,18 @@ public:
 			in_layer = in_layer * layers[i] + biases[i];
 			switch (layers_activation[i]) {
 			case SIGMOID:
-				sigmoid(in_layer);
+				act_fun::sigmoid(in_layer);
 				//temp = 1 / (exp(-temp) + 1);
 				break;
 			case RELU:
-				relu(in_layer);
+				act_fun::relu(in_layer);
 				//temp = max(temp, mat(temp.n_rows, temp.n_cols, fill::zeros));
 				break;
 			case SOFTMAX:
-				softmax(in_layer);
+				act_fun::softmax(in_layer);
 				break;
 			case TAHN:
-				tahn(in_layer);
+				act_fun::tahn(in_layer);
 				break;
 			}
 		}
