@@ -20,6 +20,9 @@ namespace {
 			i = 1.0 / (exp(-i) + 1.0);
 		}
 	}
+	double sigmoid(double input) {
+		return 1.0 / (exp(-input) + 1.0);
+	}
 	void tahn(mat& input) {
 		for (auto& i : input) {
 			i = 2.0 / (1 + exp(-2.0 * i)) - 1.0;
@@ -60,6 +63,8 @@ public:
 			results[i] = arma::randu<mat>(1, layers_size[i]);
 		}
 
+		results_before = results;
+
 		biases.resize(layers_size.size() - 1);
 		for (size_t i = 0; i < layers.size(); ++i) {
 			biases[i] = arma::randu<mat>(1, layers_size[i + 1]);
@@ -96,9 +101,11 @@ public:
 		if (in_layer.n_cols != layers_size[0]) throw "bad input";
 
 		results[0] = in_layer;
+		results_before[0] = results[0];
 		for (int i = 0; i < layers.size(); ++i) {
 			results[i + 1] = results[i] * layers[i];
 			if (is_bias) results[i + 1] += biases[i];
+			results_before[i + 1] = results[i + 1];
 			switch (layers_activation[i]) {
 			case SIGMOID:
 				sigmoid(results[i + 1]);
@@ -195,7 +202,8 @@ public:
 			E = results[i + 1];
 			for (int j = 0; j < layers_size[i + 1]; j++)
 			{
-				E(0, j) = (err[i + 1](0,j)) * this->gradient(results[i + 1](0, j), i);
+				//E(0, j) = err[i + 1](0,j) * this->gradient(results[i + 1](0, j), i);
+				E(0, j) = err[i + 1](0, j) * this->gradient(results_before[i + 1](0, j), i);
 			}
 
 			dWeits[i] = (results[i].t() * E);
@@ -242,10 +250,14 @@ public:
 	double gradient(double x, double layer_num) {
 		switch (layers_activation[layer_num]) {
 		case SIGMOID:
-			return x * (1 - x);
+			//return x * (1 - x);
+			return sigmoid(x) * (1 - sigmoid(x));
 			break;
 		case RELU:
 			return std::max(0.0, x);
+			break;
+		case TAHN:
+			return 4 * sigmoid(2 * x) * (1 - sigmoid(2 * x));
 			break;
 		}
 		return 0;
@@ -269,6 +281,7 @@ private:
 	vector<mat> layers;
 	vector<mat> biases;
 	vector<mat> results;
+	vector<mat> results_before;
 
 	bool is_bias = false;
 };
