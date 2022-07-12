@@ -2,28 +2,25 @@
 
 
 int main() {
-	const NeuralN MyNet_static( 
-		{ 10, 25, 10, 5, 3 }, 
-		{ NeuralN::SIGMOID, NeuralN::SIGMOID, NeuralN::SIGMOID, NeuralN::SIGMOID } 
+	int layer1_size = 64;
+	NeuralN Net( 
+		{ layer1_size, 32, 32 },
+		{ NeuralN::SIGMOID, NeuralN::SIGMOID } 
 	);
-	std::vector<double> a;
-	std::vector<double> r = { 1, 1, 0.1, 0.2, 0.3, -0.6, -0.7, 1, 0.534, 0.123 };
-	double s = 0;
+	std::cout << Net.paramsNumber() << " params\n";
 
 	clock_t start = clock();
-	for (int i = 0; i < 10000; ++i) {
-		//r[0] += 0.00000001;
-		a = MyNet_static.forward(r);
-		s += a[0] + a[1] + a[2];
-	}
+	Net.trainFromFile("train8.txt", 10000, 0.05);
 	
 	clock_t now = clock();
+	std::cout << (double)(now - start) / CLOCKS_PER_SEC << " sec\n";
+	mat test(1, layer1_size);
+	std::ifstream test_data("test8.txt");
+	for (int i = 0; i < layer1_size; ++i)
+		test_data >> test(0, i);
 
-	std::cout << "Elapsed time in milliseconds: "
-		<< (double)(now - start) / CLOCKS_PER_SEC
-		<< " sec" << std::endl;
-	std::cout << 10000000.0 / ((double)(now - start) / CLOCKS_PER_SEC / 100000) << std::endl;
-
-	std::cout << a[0] << " " << a[1] << " " << a[2] << " " << s;
+	mat ans = Net.forward(test);
+	for (int i = 0; i < 27; ++i)
+		std::cout << "[ " << i << " ] = " << ans(0, i) << "\n";
 	return 0;
 }
