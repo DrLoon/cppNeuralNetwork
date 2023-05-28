@@ -4,8 +4,8 @@
 int main() {
 	int layer1_size = 64;
 	NeuralN Net( 
-		{ layer1_size, 32, 32 },
-		{ NeuralN::SIGMOID, NeuralN::TAHN }
+		{ layer1_size, 32, 32, 32},
+		{ NeuralN::SIGMOID, NeuralN::SIGMOID, NeuralN::SIGMOID }
 	);
 	std::cout << Net.paramsNumber() << " params\n";
 

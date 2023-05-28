@@ -2,6 +2,7 @@
 #include <vector>
 #include <initializer_list>
 #include <algorithm>
+#include <functional>
 
 class NeuralN;
 #include <armadillo>
@@ -20,10 +21,7 @@ namespace {
 			i = 1.0 / (exp(-i) + 1.0);
 		}
 	}
-	double sigmoid(double input) {
-		return 1.0 / (exp(-input) + 1.0);
-	}
-	void tahn(mat& input) {
+	void tanh(mat& input) {
 		for (auto& i : input) {
 			i = 2.0 / (1 + exp(-2.0 * i)) - 1.0;
 		}
@@ -40,12 +38,67 @@ namespace {
 		}
 	}
 }
+namespace nn {
+	double sigmoid(double input) {
+		return 1.0 / (exp(-input) + 1.0);
+	}
+	double tanh(double input) {
+		return  2.0 / (1 + exp(-2.0 * input)) - 1.0;
+	}
+}
+
+class LSTM_cell {
+	double h;
+	double c;
+	mat W_f, W_i, W_o, W;
+	double w_f, w_i, w_o, w;
+	double b_f, b_i, b_o, b;
+	bool is_bias = false;
+	std::function<double(double&)> activation = [](double& x) { return nn::sigmoid(x); };
+
+	//forget gate 
+	double f_g(mat x) {
+		auto result = arma::conv_to<std::vector<double>>::from(W_f * x)[0];
+		result += w_f * h;
+		if (is_bias) result += b_f;
+		return activation(result);
+	}
+	
+	//input gate 
+	double i_g(mat x) {
+		auto result = arma::conv_to<std::vector<double>>::from(W_i * x)[0];
+		result += w_i * h;
+		if (is_bias) result += b_i;
+		return activation(result);
+	}
+
+	//output gate 
+	double o_g(mat x) {
+		auto result = arma::conv_to<std::vector<double>>::from(W_o * x)[0];
+		result += w_o * h;
+		if (is_bias) result += b_f;
+		return activation(result);
+	}
+
+	//cell update
+	double c_u(mat x) {
+		auto result = arma::conv_to<std::vector<double>>::from(W * x)[0];
+		result += w * h;
+		if (is_bias) result += b;
+		return nn::tanh(result);
+	}
+
+	void work(mat& x) {
+		c = f_g(x) * c + i_g(x) * c_u(x);
+		h = o_g(x) * nn::tanh(c);
+	}
+};
 
 class NeuralN {
 	using mat = arma::mat;
 	template<typename T> using vector = std::vector<T>;
 public:
-	enum activation_type { SIGMOID, RELU, SOFTMAX, TAHN };
+	enum activation_type { SIGMOID, RELU, SOFTMAX, TANH };
 
 	NeuralN(std::initializer_list<int> _layers_size, std::initializer_list<activation_type> _layers_activation)
 		: layers_size(_layers_size),
@@ -90,8 +143,8 @@ public:
 			case SOFTMAX:
 				softmax(in_layer);
 				break;
-			case TAHN:
-				tahn(in_layer);
+			case TANH:
+				tanh(in_layer);
 				break;
 			}
 		}
@@ -116,8 +169,8 @@ public:
 			case SOFTMAX:
 				softmax(results[i + 1]);
 				break;
-			case TAHN:
-				tahn(results[i + 1]);
+			case TANH:
+				tanh(results[i + 1]);
 				break;
 			}
 		}
@@ -251,13 +304,13 @@ public:
 		switch (layers_activation[layer_num]) {
 		case SIGMOID:
 			//return x * (1 - x);
-			return sigmoid(x) * (1 - sigmoid(x));
+			return nn::sigmoid(x) * (1 - nn::sigmoid(x));
 			break;
 		case RELU:
 			return std::max(0.0, x);
 			break;
-		case TAHN:
-			return 4 * sigmoid(2 * x) * (1 - sigmoid(2 * x));
+		case TANH:
+			return 4 * nn::sigmoid(2 * x) * (1 - nn::sigmoid(2 * x));
 			break;
 		}
 		return 0;
