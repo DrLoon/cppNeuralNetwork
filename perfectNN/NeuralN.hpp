@@ -35,7 +35,7 @@ namespace {
 			i -= M;
 			s += exp(i);
 		}
-		for (auto& i : input) {
+		for(auto& i : input) {
 			i = exp(i) / s;
 		}
 	}
@@ -47,9 +47,10 @@ class NeuralN {
 public:
 	enum activation_type { SIGMOID, RELU, SOFTMAX, TAHN };
 
-	NeuralN(std::initializer_list<int> _layers_size, std::initializer_list<activation_type> _layers_activation)
+	NeuralN(std::initializer_list<int> _layers_size, std::initializer_list<activation_type> _layers_activation, bool _is_bias = true)
 		: layers_size(_layers_size),
-		  layers_activation(_layers_activation)
+		  layers_activation(_layers_activation), 
+		  is_bias(_is_bias)
 	{
 		if (layers_size.size() - 1 != layers_activation.size()) throw "bad input";
 
@@ -71,12 +72,17 @@ public:
 		}
 	}
 
-	vector<double> forward(vector<double> in_data) const {
+	mat mat_from_vec(const vector<double>& vec) const{
+		mat res(1, vec.size());
+		for (int i = 0; i < vec.size(); ++i)
+			res(0, i) = vec[i];
+		return res;
+	}
+
+	vector<double> forward(const vector<double>& in_data) const {
 		if (in_data.size() != layers_size[0]) throw "bad input";
 
-		mat in_layer(1, layers_size[0]);
-		for (int i = 0; i < layers_size[0]; ++i)
-			in_layer(0, i) = in_data[i];
+		mat in_layer = std::move(mat_from_vec(in_data));
 
 		for (int i = 0; i < layers.size(); ++i) {
 			in_layer = in_layer * layers[i] + biases[i];
@@ -97,7 +103,7 @@ public:
 		}
 		return arma::conv_to< vector<double> >::from(in_layer);
 	}
-	mat forward(mat in_layer) {
+	mat forward(mat in_layer){
 		if (in_layer.n_cols != layers_size[0]) throw "bad input";
 
 		results[0] = in_layer;
@@ -123,7 +129,6 @@ public:
 		}
 		return results.end()[-1];
 	}
-
 
 	void read_weitghs(std::istream& gin) {
 		for (auto& i : layers)
@@ -181,11 +186,10 @@ public:
 		}
 		return res;
 	}
-	void backtracking(mat inputs, mat answers) {
-		if (inputs.n_cols != layers_size[0]) std::cout << "(backtracking)";
-		if (answers.n_cols != layers_size.end()[-1]) std::cout << "(backtracking)";
+	void backtracking(mat inputs, mat answers, double alpha = 0.05) {
+		if (inputs.n_cols != layers_size[0]) std::cout << "(backtracking err)";
+		if (answers.n_cols != layers_size.end()[-1]) std::cout << "(backtracking err)";
 
-		double alpha = 0.05;
 		mat result = forward(inputs);
 		vector<mat> err = results;
 		err.end()[-1] = answers - result;
@@ -208,49 +212,38 @@ public:
 
 			dWeits[i] = (results[i].t() * E);
 			layers[i] = layers[i] + dWeits[i] * alpha;
+			if (is_bias) biases[i] = biases[i] + E * alpha;
 		}
 	}
-	void trainFromFile(std::string fileName, int mum, double alpha0) {
-		//alpha = alpha0;
-		std::ifstream fin(fileName);
-		int train_num;
-		fin >> train_num;
-		std::vector<mat> train_data(train_num);
-		std::vector<mat> ans_data(train_num);
+	
+	
+	void train(std::vector<std::vector<double>> _x, std::vector<std::vector<double>> _y, int epochs, double _alpha = 0.05) {
+		if (_x.size() != _y.size()) std::cout << "bad train input\n";
 
-		for (int i = 0; i < train_num; i++)
-		{
-			train_data[i] = arma::randu<mat>(1, layers_size[0]);
+		int train_size = _x.size();
 
-			for (int j = 0; j < layers_size[0]; j++)
-				fin >> train_data[i](0, j);
+		std::vector<mat> x;
+		std::vector<mat> y;
+		for (auto& i : _x) x.push_back(std::move(mat_from_vec(i)));
+		for (auto& i : _y) y.push_back(std::move(mat_from_vec(i)));
 
-			ans_data[i] = arma::randu<mat>(1, layers_size.end()[-1]);
-			for (int j = 0; j < layers_size.end()[-1]; j++)
-				fin >> ans_data[i](0, j);
 
-		}
-		
-		for (int i = 0; i < mum; i++) {
+		for (int epoch = 0; epoch < epochs; ++epoch) {
 			double err = 0;
-			for (int j = 0; j < train_num; j++)
+			for (int sample = 0; sample < train_size; ++sample)
 			{
-				backtracking(train_data[j], ans_data[j]);
-				auto ans = this->forward(train_data[j]);
+				backtracking(x[sample], y[sample], _alpha);
+				auto ans = this->forward(x[sample]);
 				for (int k = 0; k < 32; ++k)
 					//err += -log(1 - abs(ans.data[0][k] - ans_data[j].data[0][k]) + 0.001);
-					err += abs(ans(0, k) - ans_data[j](0, k));
+					err += abs(ans(0, k) - y[sample](0, k));
 			}
-			std::cout << i << " - " << err << "\n";
-
+			std::cout << epoch << " - " << err << "\n";
 		}
-		std::cout << '\n';
-
 	}
 	double gradient(double x, double layer_num) {
 		switch (layers_activation[layer_num]) {
 		case SIGMOID:
-			//return x * (1 - x);
 			return sigmoid(x) * (1 - sigmoid(x));
 			break;
 		case RELU:
