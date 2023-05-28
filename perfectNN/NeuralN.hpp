@@ -41,6 +41,47 @@ namespace {
 	}
 }
 
+double derrivative(std::function<double(double, double, double, double)> f, double t, double w, double i, double b, int n) {
+	if (n != 2 && n != 4)
+		throw "";
+	const double h = 0.0001;
+	if (n == 2) {
+		return (f(t, w + h, i, b) - f(t, w - h, i, b)) / (2 * h);
+	}
+	else {
+		return (f(t, w, i, b + h) - f(t, w, i, b - h)) / (2 * h);
+	}
+}
+double sf(double t1, double w, double i, double b) {
+	double t2 = sigmoid(w * i + b);
+	return (t2 - t1) * (t2 - t1);
+}
+
+arma::mat der(std::function<double(arma::mat&, arma::mat&, arma::mat&, arma::mat&, int, int)> f, arma::mat& t1, arma::mat& w, arma::mat& I, arma::mat& b) {
+	double h = 0.00000000001;
+	arma::mat ans = w;
+	arma::mat w_copy_up = w;
+	arma::mat w_copy_down = w;
+	for (int i = 0; i < w.n_rows; ++i) {
+		for (int j = 0; j < w.n_cols; ++j) {
+			w_copy_up(i, j) += h;
+			w_copy_down(i, j) -= h;
+			ans(i, j) = (f(t1, w_copy_up, I, b, i, j) - f(t1, w_copy_down, I, b, i, j)) / (2 * h);
+			w_copy_up(i, j) -= h;
+			w_copy_down(i, j) += h;
+		}
+	}
+	return ans;
+}
+arma::mat sdrgdf(arma::mat& t1, arma::mat& t2) {
+	return (t2 - t1) % (t2 - t1);
+}
+double wrapper(arma::mat& t1, arma::mat& w, arma::mat& I, arma::mat& b, int i, int j) {
+	mat t = I * w;
+	sigmoid(t);
+	return sdrgdf(t, t1)(0, j);
+}
+
 class NeuralN {
 	using mat = arma::mat;
 	template<typename T> using vector = std::vector<T>;
@@ -186,7 +227,7 @@ public:
 		}
 		return res;
 	}
-	void backtracking(mat inputs, mat answers, double alpha = 0.05) {
+	void backtracking(const mat& inputs, const mat& answers, double alpha = 0.05) {
 		if (inputs.n_cols != layers_size[0]) std::cout << "(backtracking err)";
 		if (answers.n_cols != layers_size.end()[-1]) std::cout << "(backtracking err)";
 
@@ -204,17 +245,21 @@ public:
 
 		for (int i = 0; i < layers_size.size() - 1; i++) {
 			E = results[i + 1];
-			for (int j = 0; j < layers_size[i + 1]; j++)
-			{
-				//E(0, j) = err[i + 1](0,j) * this->gradient(results[i + 1](0, j), i);
-				E(0, j) = err[i + 1](0, j) * this->gradient(results_before[i + 1](0, j), i);
-			}
+			//for (int j = 0; j < layers_size[i + 1]; j++)
+			//{
+			//	//E(0, j) = err[i + 1](0,j) * this->gradient(results[i + 1](0, j), i);
+			//	//E(0, j) = err[i + 1](0, j) * this->gradient(results_before[i + 1](0, j), i);
+			//	//E(0, j) = -derrivative(sf, results[i](0, j) + err[i](0, j), layers[i](0, j), results_before[i](0, j), biases[i](0, j), 2);
+			//}
 
-			dWeits[i] = (results[i].t() * E);
+			//dWeits[i] = (results[i].t() * E);
+			mat dsf = results[i + 1] + err[i + 1];
+			dWeits[i] = -1 * der(wrapper, dsf, layers[i], results_before[i], biases[i]);
 			layers[i] = layers[i] + dWeits[i] * alpha;
 			if (is_bias) biases[i] = biases[i] + E * alpha;
 		}
 	}
+
 	
 	
 	void train(std::vector<std::vector<double>> _x, std::vector<std::vector<double>> _y, int epochs, double _alpha = 0.05) {

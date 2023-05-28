@@ -7,7 +7,7 @@ int main() {
 	NeuralN Net( 
 		{ input_size, 32, output_size },
 		{ NeuralN::SIGMOID, NeuralN::TAHN },
-		true
+		false
 	);
 	std::cout << Net.paramsNumber() << " params\n";
 
@@ -30,7 +30,7 @@ int main() {
 
 	//training
 	clock_t start = clock();
-	Net.train(train_data, ans_data, 10000, 0.05);
+	Net.train(train_data, ans_data, 100000, 0.01);
 	
 	clock_t now = clock();
 	std::cout << (double)(now - start) / CLOCKS_PER_SEC << " sec\n";
